@@ -230,7 +230,7 @@ void entitle(pid_t pid) {
 void hook_dlopen(void) {
     entitle(getpid());
 
-    void *handle = dlopen("/var/LIB/libsubstitute.dylib", RTLD_NOW);
+    void *handle = dlopen("/var/ulb/libsubstitute.dylib", RTLD_NOW);
     if (!handle) {
         DEBUGLOG("%s", dlerror());
         return;

@@ -3,7 +3,7 @@ This TweakInject.xm strips fishhook & replaces it with Substitute's methods
 -**NOTE**-
 
 - Currently this should only work on remounted devices
-- A rootless version will be added soon, just have to change some things
+- A rootless version will be added soon, just have to change some things | **Edit** - A rootless version is available
 - Anyone can use this freely, I just ask you give proper credit if you do decide to use this
 
 This is for the xSpiral (A12) Jailbreak

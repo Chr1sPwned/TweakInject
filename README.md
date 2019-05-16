@@ -14,5 +14,5 @@ xSpiral is opensourced with multiple repos and can be found here - www.github.co
 
 I highly ask that users do not use this atm. This is currently only for devs
 
-If you wnat to contact me about TweakInject.xm or anything else, shoot me a DM on twwitter (@Chr1sPwn3d) or discord (Chr1sPwn3d#9333)
+If you want to contact me about TweakInject.xm or anything else, shoot me a DM on twitter (@Chr1sPwn3d) or discord (Chr1sPwn3d#9333)
 

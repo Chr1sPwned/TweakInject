@@ -186,7 +186,7 @@ int file_exist(char *filename) {
 typedef void *(*dlopen_t)(const char *filename, int flag);
 dlopen_t old_dlopen;
 
-void *patched_dlopen(const char *filename, int flag) {
+int *patched_dlopen(const char *filename, int flag) {
     void *ret = old_dlopen(filename, flag);
     if (ret == NULL) {
         if (strstr(filename, "/var/containers/Bundle") && strstr(filename, ".dylib")) {

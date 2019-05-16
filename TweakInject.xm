@@ -210,13 +210,13 @@ void dlopen_patch() {
 
 }
 */
-void entitle(pid_t pid) {
+int entitle(pid_t pid) {
     if (access(LIBJAILBREAK_DYLIB, F_OK) != 0) {
         printf("[!] %s was not found!\n", LIBJAILBREAK_DYLIB);
         return;
     }
 
-    void *handle = dlopen(LIBJAILBREAK_DYLIB, RTLD_LAZY);
+    int *handle = dlopen(LIBJAILBREAK_DYLIB, RTLD_LAZY);
     if (handle == NULL) {
         printf("[!] Failed to open libjailbreak.dylib: %s\n", dlerror());
         return;
@@ -230,7 +230,7 @@ void entitle(pid_t pid) {
 void hook_dlopen(void) {
     entitle(getpid());
 
-    void *handle = dlopen("/usr/lib/libsubstitute.dylib", RTLD_NOW);
+    int *handle = dlopen("/usr/lib/libsubstitute.dylib", RTLD_NOW);
     if (!handle) {
         DEBUGLOG("%s", dlerror());
         return;

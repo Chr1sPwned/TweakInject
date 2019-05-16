@@ -16,3 +16,5 @@ I highly ask that users do not use this atm. This is currently only for devs
 
 If you want to contact me about TweakInject.xm or anything else, shoot me a DM on twitter (@Chr1sPwn3d) or discord (Chr1sPwn3d#9333)
 
+**CURRENT PROGRESS**
+- Adding rootless support for xSpiral

@@ -1,3 +1,4 @@
+#line 1 "TweakInject.xm"
 #import <dlfcn.h>
 #import <objc/runtime.h>
 #import <stdlib.h>
@@ -8,7 +9,7 @@
 #import <sys/types.h>
 #import <sys/mman.h>
 
-// #import "fishhook.h"
+
 #import "substitute.h"
 
 #define TWEAKINJECTDEBUG 1
@@ -27,47 +28,47 @@ fprintf(stderr, fmt "\n", ##args); \
 
 NSArray *sbinjectGenerateDylibList() {
     NSString *processName = [[NSProcessInfo processInfo] processName];
-    // launchctl, amfid you are special cases
+    
     if ([processName isEqualToString:@"launchctl"]) {
         return nil;
     }
-    // Create an array containing all the filenames in dylibDir (/opt/simject)
+    
     NSError *e = nil;
     NSArray *dylibDirContents = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:dylibDir error:&e];
     if (e) {
         return nil;
     }
-    // Read current bundle identifier
-    //NSString *bundleIdentifier = NSBundle.mainBundle.bundleIdentifier;
-    // We're only interested in the plist files
+    
+    
+    
     NSArray *plists = [dylibDirContents filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"SELF ENDSWITH %@", @"plist"]];
-    // Create an empty mutable array that will contain a list of dylib paths to be injected into the target process
+    
     NSMutableArray *dylibsToInject = [NSMutableArray array];
-    // Loop through the list of plists
+    
     for (NSString *plist in plists) {
-        // We'll want to deal with absolute paths, so append the filename to dylibDir
+        
         NSString *plistPath = [dylibDir stringByAppendingPathComponent:plist];
         NSDictionary *filter = [NSDictionary dictionaryWithContentsOfFile:plistPath];
-        // This boolean indicates whether or not the dylib has already been injected
+        
         BOOL isInjected = NO;
-        // If supported iOS versions are specified within the plist, we check those first
+        
         NSArray *supportedVersions = filter[@"CoreFoundationVersion"];
         if (supportedVersions) {
             if (supportedVersions.count != 1 && supportedVersions.count != 2) {
-                continue; // Supported versions are in the wrong format, we should skip
+                continue; 
             }
             if (supportedVersions.count == 1 && [supportedVersions[0] doubleValue] > kCFCoreFoundationVersionNumber) {
-                continue; // Doesn't meet lower bound
+                continue; 
             }
             if (supportedVersions.count == 2 && ([supportedVersions[0] doubleValue] > kCFCoreFoundationVersionNumber || [supportedVersions[1] doubleValue] <= kCFCoreFoundationVersionNumber)) {
-                continue; // Outside bounds
+                continue; 
             }
         }
-        // Decide whether or not to load the dylib based on the Bundles values
+        
         for (NSString *entry in filter[@"Filter"][@"Bundles"]) {
-            // Check to see whether or not this bundle is actually loaded in this application or not
+            
             if (!CFBundleGetBundleWithIdentifier((CFStringRef)entry)) {
-                // If not, skip it
+                
                 continue;
             }
             [dylibsToInject addObject:[[plistPath stringByDeletingPathExtension] stringByAppendingString:@".dylib"]];
@@ -75,7 +76,7 @@ NSArray *sbinjectGenerateDylibList() {
             break;
         }
         if (!isInjected) {
-            // Decide whether or not to load the dylib based on the Executables values
+            
             for (NSString *process in filter[@"Filter"][@"Executables"]) {
                 if ([process isEqualToString:processName]) {
                     [dylibsToInject addObject:[[plistPath stringByDeletingPathExtension] stringByAppendingString:@".dylib"]];
@@ -85,14 +86,14 @@ NSArray *sbinjectGenerateDylibList() {
             }
         }
         if (!isInjected) {
-            // Decide whether or not to load the dylib based on the Classes values
+            
             for (NSString *clazz in filter[@"Filter"][@"Classes"]) {
-                // Also check if this class is loaded in this application or not
+                
                 if (!NSClassFromString(clazz)) {
-                    // This class couldn't be loaded, skip
+                    
                     continue;
                 }
-                // It's fine to add this dylib at this point
+                
                 [dylibsToInject addObject:[[plistPath stringByDeletingPathExtension] stringByAppendingString:@".dylib"]];
                 isInjected = YES;
                 break;
@@ -123,48 +124,73 @@ int file_exist(char *filename) {
 - (BOOL)launchApplicationWithIdentifier:(NSString *)identifier suspended:(BOOL)suspended;
 @end
 
-%group SafeMode
-%hook SBLockScreenViewController
--(void)finishUIUnlockFromSource:(int)source {
-    %orig;
-    /* if u think UIAlertControllers are better ur an ignorant
-     hooray for UIAlertViews */
-    UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Safe Mode" message:@"Oops! SpringBoard just crashed. Neither Substitute nor Tweak Injector caused this. Do you want to respring?" delegate:self cancelButtonTitle:@"Cancel" otherButtonTitles:@"Respring", nil];
-    [alert show];
-    [alert release];
-}
-%new
-- (void)alertView:(UIAlertView *)alertView cickedButtonAtIndex:(NSInteger)buttonIndex {
-    if (buttonIndex == 1) {
-        exit(0);
-    }
-}
-%end
 
-%hook SBDashBoardViewController
--(void)finishUIUnlockFromSource:(int)source {
-    %orig;
-    /* if u think UIAlertControllers are better ur an ignorant
-     hooray for UIAlertViews */
+#include <substrate.h>
+#if defined(__clang__)
+#if __has_feature(objc_arc)
+#define _LOGOS_SELF_TYPE_NORMAL __unsafe_unretained
+#define _LOGOS_SELF_TYPE_INIT __attribute__((ns_consumed))
+#define _LOGOS_SELF_CONST const
+#define _LOGOS_RETURN_RETAINED __attribute__((ns_returns_retained))
+#else
+#define _LOGOS_SELF_TYPE_NORMAL
+#define _LOGOS_SELF_TYPE_INIT
+#define _LOGOS_SELF_CONST
+#define _LOGOS_RETURN_RETAINED
+#endif
+#else
+#define _LOGOS_SELF_TYPE_NORMAL
+#define _LOGOS_SELF_TYPE_INIT
+#define _LOGOS_SELF_CONST
+#define _LOGOS_RETURN_RETAINED
+#endif
+
+@class SBLockScreenViewController; @class SBDashBoardViewController; 
+
+
+#line 126 "TweakInject.xm"
+static void (*_logos_orig$SafeMode$SBLockScreenViewController$finishUIUnlockFromSource$)(_LOGOS_SELF_TYPE_NORMAL SBLockScreenViewController* _LOGOS_SELF_CONST, SEL, int); static void _logos_method$SafeMode$SBLockScreenViewController$finishUIUnlockFromSource$(_LOGOS_SELF_TYPE_NORMAL SBLockScreenViewController* _LOGOS_SELF_CONST, SEL, int); static void _logos_method$SafeMode$SBLockScreenViewController$alertView$cickedButtonAtIndex$(_LOGOS_SELF_TYPE_NORMAL SBLockScreenViewController* _LOGOS_SELF_CONST, SEL, UIAlertView *, NSInteger); static void (*_logos_orig$SafeMode$SBDashBoardViewController$finishUIUnlockFromSource$)(_LOGOS_SELF_TYPE_NORMAL SBDashBoardViewController* _LOGOS_SELF_CONST, SEL, int); static void _logos_method$SafeMode$SBDashBoardViewController$finishUIUnlockFromSource$(_LOGOS_SELF_TYPE_NORMAL SBDashBoardViewController* _LOGOS_SELF_CONST, SEL, int); static void _logos_method$SafeMode$SBDashBoardViewController$alertView$clickedButtonAtIndex$(_LOGOS_SELF_TYPE_NORMAL SBDashBoardViewController* _LOGOS_SELF_CONST, SEL, UIAlertView *, NSInteger); 
+
+static void _logos_method$SafeMode$SBLockScreenViewController$finishUIUnlockFromSource$(_LOGOS_SELF_TYPE_NORMAL SBLockScreenViewController* _LOGOS_SELF_CONST __unused self, SEL __unused _cmd, int source) {
+    _logos_orig$SafeMode$SBLockScreenViewController$finishUIUnlockFromSource$(self, _cmd, source);
+    
+
     UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Safe Mode" message:@"Oops! SpringBoard just crashed. Neither Substitute nor Tweak Injector caused this. Do you want to respring?" delegate:self cancelButtonTitle:@"Cancel" otherButtonTitles:@"Respring", nil];
     [alert show];
     [alert release];
 }
-%new
-- (void)alertView:(UIAlertView *)alertView clickedButtonAtIndex:(NSInteger)buttonIndex {
+
+static void _logos_method$SafeMode$SBLockScreenViewController$alertView$cickedButtonAtIndex$(_LOGOS_SELF_TYPE_NORMAL SBLockScreenViewController* _LOGOS_SELF_CONST __unused self, SEL __unused _cmd, UIAlertView * alertView, NSInteger buttonIndex) {
     if (buttonIndex == 1) {
         exit(0);
     }
 }
-%end
-%end
+
+
+
+static void _logos_method$SafeMode$SBDashBoardViewController$finishUIUnlockFromSource$(_LOGOS_SELF_TYPE_NORMAL SBDashBoardViewController* _LOGOS_SELF_CONST __unused self, SEL __unused _cmd, int source) {
+    _logos_orig$SafeMode$SBDashBoardViewController$finishUIUnlockFromSource$(self, _cmd, source);
+    
+
+    UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Safe Mode" message:@"Oops! SpringBoard just crashed. Neither Substitute nor Tweak Injector caused this. Do you want to respring?" delegate:self cancelButtonTitle:@"Cancel" otherButtonTitles:@"Respring", nil];
+    [alert show];
+    [alert release];
+}
+
+static void _logos_method$SafeMode$SBDashBoardViewController$alertView$clickedButtonAtIndex$(_LOGOS_SELF_TYPE_NORMAL SBDashBoardViewController* _LOGOS_SELF_CONST __unused self, SEL __unused _cmd, UIAlertView * alertView, NSInteger buttonIndex) {
+    if (buttonIndex == 1) {
+        exit(0);
+    }
+}
+
+
 
 typedef void *(*dlopen_t)(const char *filename, int flag);
 dlopen_t old_dlopen;
 
 int *patched_dlopen_common(const char *filename, int flag, dlopen_t old_dl) {
     if (strstr(filename, "/var/containers/Bundle") && strstr(filename, ".dylib")) {
-        // a somewhat way to wait for jbd to patch dylib
+        
          int tries = 5;
          while (tries-- > 0) {
             old_dl(filename, flag);
@@ -178,7 +204,7 @@ int *patched_dlopen_common(const char *filename, int flag, dlopen_t old_dl) {
 
 int *patched_dlopen(const char *filename, int flag)
 {
-    //We need to hook the ORIGINAL dlopen as well.
+    
     return patched_dlopen_common(filename, flag, old_dlopen);
 }
 
@@ -234,10 +260,10 @@ __attribute__ ((constructor))
 static void ctor(void) {
     @autoreleasepool {
         
-        //%init(mmap_patch);
-        //dlopen_patch(); // mmap patch triggers some weird behavior;
-                             // maybe do a low level dyld patch?
-                             // well idk if I'm sure how to do that
+        
+        
+                             
+                             
         hook_dlopen();
         
         if (NSBundle.mainBundle.bundleIdentifier == nil || ![NSBundle.mainBundle.bundleIdentifier isEqualToString:@"org.coolstar.SafeMode"]){
@@ -265,7 +291,7 @@ static void ctor(void) {
                     if ([NSBundle.mainBundle.bundleIdentifier isEqualToString:@"com.apple.springboard"]){
                         unlink("/var/mobile/.sbinjectSafeMode");
                         NSLog(@"Entering Safe Mode!");
-                        %init(SafeMode);
+                        {Class _logos_class$SafeMode$SBLockScreenViewController = objc_getClass("SBLockScreenViewController"); MSHookMessageEx(_logos_class$SafeMode$SBLockScreenViewController, @selector(finishUIUnlockFromSource:), (IMP)&_logos_method$SafeMode$SBLockScreenViewController$finishUIUnlockFromSource$, (IMP*)&_logos_orig$SafeMode$SBLockScreenViewController$finishUIUnlockFromSource$);{ char _typeEncoding[1024]; unsigned int i = 0; _typeEncoding[i] = 'v'; i += 1; _typeEncoding[i] = '@'; i += 1; _typeEncoding[i] = ':'; i += 1; memcpy(_typeEncoding + i, @encode(UIAlertView *), strlen(@encode(UIAlertView *))); i += strlen(@encode(UIAlertView *)); memcpy(_typeEncoding + i, @encode(NSInteger), strlen(@encode(NSInteger))); i += strlen(@encode(NSInteger)); _typeEncoding[i] = '\0'; class_addMethod(_logos_class$SafeMode$SBLockScreenViewController, @selector(alertView:cickedButtonAtIndex:), (IMP)&_logos_method$SafeMode$SBLockScreenViewController$alertView$cickedButtonAtIndex$, _typeEncoding); }Class _logos_class$SafeMode$SBDashBoardViewController = objc_getClass("SBDashBoardViewController"); MSHookMessageEx(_logos_class$SafeMode$SBDashBoardViewController, @selector(finishUIUnlockFromSource:), (IMP)&_logos_method$SafeMode$SBDashBoardViewController$finishUIUnlockFromSource$, (IMP*)&_logos_orig$SafeMode$SBDashBoardViewController$finishUIUnlockFromSource$);{ char _typeEncoding[1024]; unsigned int i = 0; _typeEncoding[i] = 'v'; i += 1; _typeEncoding[i] = '@'; i += 1; _typeEncoding[i] = ':'; i += 1; memcpy(_typeEncoding + i, @encode(UIAlertView *), strlen(@encode(UIAlertView *))); i += strlen(@encode(UIAlertView *)); memcpy(_typeEncoding + i, @encode(NSInteger), strlen(@encode(NSInteger))); i += strlen(@encode(NSInteger)); _typeEncoding[i] = '\0'; class_addMethod(_logos_class$SafeMode$SBDashBoardViewController, @selector(alertView:clickedButtonAtIndex:), (IMP)&_logos_method$SafeMode$SBDashBoardViewController$alertView$clickedButtonAtIndex$, _typeEncoding); }}
                     }
                 }
             }

@@ -201,15 +201,6 @@ void *patched_dlopen(const char *filename, int flag) {
     return ret;
 }
 
-/*
-void dlopen_patch() {
-        struct rebinding rebindings[] = {
-        {"dlopen", (void *)patched_dlopen, (void **)&old_dlopen}
-    };
-    rebind_symbols(rebindings, 1);
-
-}
-*/
 int entitle(pid_t pid) {
     if (access(LIBJAILBREAK_DYLIB, F_OK) != 0) {
         printf("[!] %s was not found!\n", LIBJAILBREAK_DYLIB);

@@ -8,7 +8,6 @@
 #import <sys/types.h>
 #import <sys/mman.h>
 
-// #import "fishhook.h"
 #import "substitute.h"
 
 #define TWEAKINJECTDEBUG 1
@@ -237,7 +236,7 @@ static void ctor(void) {
     @autoreleasepool {
         
         //%init(mmap_patch);
-        //dlopen_patch(); // mmap patch triggers some weird behavior;
+                             // mmap patch triggers some weird behavior;
                              // maybe do a low level dyld patch?
                              // well idk if I'm sure how to do that
         hook_dlopen();

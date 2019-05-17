@@ -216,17 +216,7 @@ int entitle(pid_t pid) {
         return;
     }
 
-    int *handle = dlopen(LIBJAILBREAK_DYLIB, RTLD_LAZY);
-    if (handle == NULL) {
-        printf("[!] Failed to open libjailbreak.dylib: %s\n", dlerror());
-        return;
-    }
-
-    typedef int (*entitle_t)(pid_t pid, uint32_t flags);
-    entitle_t entitle_ptr = (entitle_t)dlsym(handle, "jb_oneshot_entitle_now");
-    entitle_ptr(pid, FLAG_PLATFORMIZE);
-    printf("[!] Platformized.\n");
-
+ 
 void hook_dlopen(void) {
     entitle(getpid());
 

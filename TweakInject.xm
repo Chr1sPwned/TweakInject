@@ -13,6 +13,11 @@
 
 #define TWEAKINJECTDEBUG 1
 
+#define DEBUGLOG(fmt, args...)\
+do {\
+fprintf(stderr, fmt "\n", ##args); \
+} while(0)
+#define LIBJAILBREAK_DYLIB      (const char *)("/usr/lib/libjailbreak.dylib")
 #ifndef TWEAKINJECTDEBUG
 #define printf(str, ...)
 #define NSLog(str, ...)
@@ -154,72 +159,41 @@ int file_exist(char *filename) {
 %end
 %end
 
-/*%group mmap_patch
-%hookf(void *, mmap, void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
-    void *ret = %orig;
-    if (ret == MAP_FAILED && (prot & 4)) {
-        NSLog(@"First failed, mmap: %p", ret);
-        ret = %orig;
-        NSLog(@"Second mmap: %p", ret);
-    }
-    return ret;
-}
-%end*/
-
-//%group dlopen_patch
-/*%hookf(void *, dlopen, const char *filename, int flag) {
-    void *ret = %orig;
-    if (ret == NULL) {
-        if (strstr(filename, "/var/containers/Bundle") && strstr(filename, ".dylib")) {
-            // a somewhat way to wait for jbd to patch dylib
-            int tries = 5;
-            while (tries-- > 0) {
-                ret = %orig;
-                if (ret) return ret;
-            }
-        }
-    }
-    return ret;
-}
-%end*/
-
 typedef void *(*dlopen_t)(const char *filename, int flag);
 dlopen_t old_dlopen;
 
-int *patched_dlopen(const char *filename, int flag) {
-    void *ret = old_dlopen(filename, flag);
-    if (ret == NULL) {
-        if (strstr(filename, "/var/containers/Bundle") && strstr(filename, ".dylib")) {
-            // a somewhat way to wait for jbd to patch dylib
-            int tries = 5;
-            while (tries-- > 0) {
-                ret = old_dlopen(filename, flag);
-                if (ret) return ret;
-            }
+int *patched_dlopen_common(const char *filename, int flag, dlopen_t old_dl) {
+    if (strstr(filename, "/var/containers/Bundle") && strstr(filename, ".dylib")) {
+        // a somewhat way to wait for jbd to patch dylib
+         int tries = 5;
+         while (tries-- > 0) {
+            old_dl(filename, flag);
+            return 0;
         }
-    }
-    return ret;
+     }
+
+    old_dl(filename, flag);
+    return 0;
 }
 
-/*
-void dlopen_patch() {
-        struct rebinding rebindings[] = {
-        {"dlopen", (void *)patched_dlopen, (void **)&old_dlopen}
-    };
-    rebind_symbols(rebindings, 1);
-
+int *patched_dlopen(const char *filename, int flag)
+{
+    //We need to hook the ORIGINAL dlopen as well.
+    return patched_dlopen_common(filename, flag, old_dlopen);
 }
-*/
+
+
+
 int entitle(pid_t pid) {
     if (access(LIBJAILBREAK_DYLIB, F_OK) != 0) {
         printf("[!] %s was not found!\n", LIBJAILBREAK_DYLIB);
-        return;
+        return -1;
     }
 
-    int *handle = dlopen(LIBJAILBREAK_DYLIB, RTLD_LAZY);
+    void *handle = dlopen(LIBJAILBREAK_DYLIB, RTLD_LAZY);
     if (handle == NULL) {
         printf("[!] Failed to open libjailbreak.dylib: %s\n", dlerror());
-        return;
+        return -1;
     }
 
     typedef int (*entitle_t)(pid_t pid, uint32_t flags);
@@ -227,24 +201,28 @@ int entitle(pid_t pid) {
     entitle_ptr(pid, FLAG_PLATFORMIZE);
     printf("[!] Platformized.\n");
 
-void hook_dlopen(void) {
+    return 0;
+}
+
+void hook_dlopen() {
     entitle(getpid());
 
-    int *handle = dlopen("/usr/lib/libsubstitute.dylib", RTLD_NOW);
+    void *handle = dlopen("/usr/lib/libsubstitute.dylib", RTLD_NOW);
     if (!handle) {
         DEBUGLOG("%s", dlerror());
         return;
     }
-int (*substitute_hook_functions)(const struct substitute_function_hook *hooks, size_t nhooks, struct substitute_function_hook_record **recordp, int options) = dlsym(handle, "substitute_hook_functions");
+    int (*substitute_hook_functions)(const struct substitute_function_hook *hooks, size_t nhooks, struct substitute_function_hook_record **recordp, int options) = dlsym(handle, "substitute_hook_functions");
+  
     if (!substitute_hook_functions) {
         DEBUGLOG("%s", dlerror());
         return;
     }
 
 
-struct substitute_function_hook dl_hook;
-    dl_hook.function = dlopen;
-    dl_hook.replacement = patched_dlopen;
+    struct substitute_function_hook dl_hook;
+    dl_hook.function = (void *)"dlopen";
+    dl_hook.replacement = (void *)patched_dlopen;
     dl_hook.old_ptr = &old_dlopen;
     dl_hook.options = 0;
     substitute_hook_functions(&dl_hook, 1, NULL, SUBSTITUTE_NO_THREAD_SAFETY);
